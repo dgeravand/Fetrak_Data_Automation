@@ -1,0 +1,569 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduler Admin - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <div class="title-with-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="title-icon"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <h1>Scheduler Admin</h1>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="scheduler-status-panel">
+    {% if error_msg %}
+    <div class="alert alert-error">
+        <strong>Error:</strong> {{ error_msg }}
+    </div>
+    {% endif %}
+
+    <div class="status-card">
+        <h2>Status</h2>
+        <div class="status-indicator {% if is_running %}status-running{% else %}status-stopped{% endif %}">
+            {% if is_running %}
+            <span class="status-dot running"></span>
+            <span class="status-text">Running</span>
+            {% else %}
+            <span class="status-dot stopped"></span>
+            <span class="status-text">Stopped</span>
+            {% endif %}
+        </div>
+        <p class="timezone-info">Timezone: <strong>{{ app_timezone() }}</strong></p>
+
+        <div class="status-actions">
+            {% if is_running %}
+            <form method="POST" action="{{ url_for('main.scheduler_stop') }}">
+                <button type="submit" class="btn btn-danger">Stop Scheduler</button>
+            </form>
+            <form method="POST" action="{{ url_for('main.scheduler_reload') }}">
+                <button type="submit" class="btn btn-secondary">Reload Jobs</button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('main.scheduler_start') }}">
+                <button type="submit" class="btn btn-success">Start Scheduler</button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('main.scheduler_logs') }}" target="_blank" class="btn btn-info">View Logs</a>
+            <a href="{{ url_for('main.scheduler_logs_live') }}" target="_blank" class="btn btn-warning">Live Logs</a>
+        </div>
+    </div>
+
+    <div class="jobs-card">
+        <h2>Scheduled Jobs</h2>
+        {% if jobs %}
+        <table class="status-table">
+            <thead>
+                <tr>
+                    <th>Job Name</th>
+                    <th>Schedule</th>
+                    <th>Last Run</th>
+                    <th>Next Run</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>{{ job.name }}</td>
+                    <td><code>{{ job.trigger }}</code></td>
+                    <td>
+                        {% if job.last_run %}
+                        <span class="last-run-badge {{ job.last_run.status }}">
+                            {% if job.last_run.status == 'success' %}
+                            ✓
+                            {% elif job.last_run.status == 'failed' %}
+                            ✗
+                            {% else %}
+                            ⏳
+                            {% endif %}
+                            {{ job.last_run.end_time|tzformat if job.last_run.end_time else job.last_run.status }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ job.next_run_formatted }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">
+            {% if is_running %}
+            No jobs scheduled. Make sure your config files have jobs with cron schedules.
+            {% else %}
+            Start the scheduler to see jobs.
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="running-jobs-card" id="runningJobsCard">
+        <h2>Running Jobs <span id="refreshIndicator" class="refresh-indicator"></span></h2>
+        <div id="runningJobsContent">
+            <p class="empty-state" id="noRunningJobs">No jobs currently running.</p>
+        </div>
+        <div class="running-job-logs" id="runningJobLogs" style="display:none;">
+            <h3>Live Logs</h3>
+            <pre id="jobLogsContent" class="log-content"></pre>
+        </div>
+    </div>
+
+    <div class="config-admin-card">
+        <h2>Config Files</h2>
+        <table class="status-table">
+            <thead>
+                <tr>
+                    <th>Config File</th>
+                    <th>Jobs</th>
+                    <th>Queries</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for config in config_files %}
+                <tr>
+                    <td><strong>{{ config.name.replace('.yaml', '').replace('.yml', '') }}</strong></td>
+                    <td class="count-cell">{{ config.job_count }}</td>
+                    <td class="count-cell">{{ config.query_count }}</td>
+                    <td>
+                        <a href="{{ url_for('main.config_rename', config_file=config.name) }}" class="btn-small">Rename</a>
+                        <a href="{{ url_for('main.configs_admin_delete', config_file=config.name) }}" class="btn-small btn-danger" onclick="return confirm('Delete {{ config.name }}? This cannot be undone.')">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="timezone-card">
+        <h2>Timezone Settings</h2>
+        <form method="POST" action="{{ url_for('main.timezone_update') }}" class="timezone-form">
+            <div class="form-group">
+                <label for="timezone">Application Timezone</label>
+                <select id="timezone" name="timezone" class="form-control">
+                    {% for tz in timezones %}
+                    <option value="{{ tz }}" {% if tz == current_timezone %}selected{% endif %}>{{ tz }}</option>
+                    {% endfor %}
+                </select>
+                <small>All times (scheduler, logs, history) are displayed in this timezone.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Timezone</button>
+        </form>
+    </div>
+
+    <div class="info-card">
+        <h2>Quick Help</h2>
+        <ul>
+            <li><strong>Start Scheduler</strong> - Load jobs from config and start running them at their scheduled times</li>
+            <li><strong>Stop Scheduler</strong> - Stop all scheduled jobs</li>
+            <li><strong>Reload Jobs</strong> - Reload jobs from config files without stopping</li>
+        </ul>
+        <p><strong>Cron Format:</strong> minute hour day month day_of_week</p>
+        <p>Examples:
+            <code>0 8 * * *</code> - Daily at 8 AM
+            <code>0 8 * * 1-5</code> - Weekdays at 8 AM
+            <code>36 15 * * *</code> - Daily at 3:36 PM
+        </p>
+    </div>
+</div>
+
+<style>
+.scheduler-status-panel {
+    display: grid;
+    gap: 20px;
+}
+
+.timezone-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.timezone-card h2 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: #333;
+}
+.timezone-form .form-group {
+    margin-bottom: 16px;
+}
+.timezone-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #333;
+}
+.timezone-form select {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.timezone-form small {
+    display: block;
+    margin-top: 4px;
+    color: #666;
+    font-size: 12px;
+}
+.timezone-info {
+    color: #666;
+    font-size: 13px;
+    margin: 8px 0 16px 0;
+}
+
+.status-card, .jobs-card, .info-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.status-card h2, .jobs-card h2, .info-card h2 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.status-dot.running {
+    background: #28a745;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.stopped {
+    background: #dc3545;
+}
+
+.status-text {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.status-running .status-text {
+    color: #28a745;
+}
+
+.status-stopped .status-text {
+    color: #dc3545;
+}
+
+.status-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.status-actions .btn {
+    padding: 10px 20px;
+}
+
+.status-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.status-table th, .status-table td {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.status-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+
+.status-table code {
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.info-card ul {
+    padding-left: 20px;
+}
+
+.info-card li {
+    margin: 8px 0;
+}
+
+.info-card code {
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.count-cell {
+    text-align: center;
+    font-weight: 600;
+}
+
+.config-admin-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.config-admin-card h2 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.btn-small {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.count-cell {
+    text-align: center;
+    font-weight: 600;
+}
+
+.running-jobs-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.running-jobs-card h2 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: #333;
+}
+.refresh-indicator {
+    font-size: 12px;
+    color: #999;
+    margin-left: 8px;
+}
+.running-job-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+}
+.running-job-item.running { border-left: 4px solid #ffc107; }
+.running-job-item.completed { border-left: 4px solid #28a745; }
+.running-job-item.failed { border-left: 4px solid #dc3545; }
+.running-job-name { font-weight: 600; flex: 1; }
+.running-job-status { font-size: 12px; color: #666; }
+.running-job-progress { font-size: 13px; margin-top: 4px; }
+.running-job-time { font-size: 11px; color: #999; }
+.running-job-logs {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-top: 16px;
+}
+.running-job-logs h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+}
+.log-content {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+</style>
+
+<script>
+let refreshInterval;
+
+async function fetchRunningJobs() {
+    try {
+        const response = await fetch('/api/scheduler/running-jobs');
+        const data = await response.json();
+        updateRunningJobsUI(data.running || {});
+        document.getElementById('refreshIndicator').textContent = 'Auto-refresh: ON';
+    } catch (error) {
+        console.error('Failed to fetch running jobs:', error);
+    }
+}
+
+// Extract step label from log lines for progress display
+function extractStep(logs) {
+    if (!logs) return 'Initializing...';
+    const lines = logs.split('\n').filter(l => l.trim());
+    if (lines.length === 0) return 'Starting...';
+
+    const lastLine = lines[lines.length - 1].trim();
+
+    // Parse step from log messages
+    if (lastLine.includes('Fetching data') || lastLine.includes('Retrieving')) return 'Fetching data from database...';
+    if (lastLine.includes('rows') && (lastLine.includes('Retrieved') || lastLine.includes('rows'))) {
+        const match = lastLine.match(/(\d+)\s*rows?/);
+        if (match) return `Fetched ${match[1]} rows from database`;
+    }
+    if (lastLine.includes('Target filename')) return 'Building filename...';
+    if (lastLine.includes('File exists')) return 'Checking existing file...';
+    if (lastLine.includes('Replacing file')) return 'Replacing file...';
+    if (lastLine.includes('Appending to existing')) return 'Appending to existing file...';
+    if (lastLine.includes('Creating new file')) return 'Creating new file...';
+    if (lastLine.includes('Output saved')) return 'Saving output...';
+    if (lastLine.includes('Uploading to SharePoint')) return 'Uploading to SharePoint...';
+    if (lastLine.includes('Upload completed')) return 'Upload complete!';
+    if (lastLine.includes('Open in browser')) return 'Finalizing...';
+    if (lastLine.includes('grant_permissions')) return 'Setting permissions...';
+    if (lastLine.includes('Job completed')) return 'Job completed';
+    if (lastLine.includes('Retry') || lastLine.includes('retry')) return lastLine.substring(0, 80);
+    if (lastLine.includes('file is locked') || lastLine.includes('423')) {
+        const lockMatch = lastLine.match(/by\s+([^\.]+)/i);
+        const user = lockMatch ? lockMatch[1].trim() : 'another user';
+        return `File locked by ${user} — waiting for unlock...`;
+    }
+
+    return lastLine.length > 80 ? lastLine.substring(0, 80) + '...' : lastLine;
+}
+
+// Extract locking user from full logs for error display
+function extractLockingUser(logs) {
+    if (!logs) return null;
+    const match = logs.match(/locked\s+for\s+shared\s+use\s+by\s+([^\.]+)/i);
+    if (match) return match[1].trim();
+    const altMatch = logs.match(/by\s+([A-Za-z0-9\\]+[^\s,])/);
+    if (altMatch && logs.includes('locked')) return altMatch[1].trim();
+    return null;
+}
+
+function updateRunningJobsUI(runningJobs) {
+    const container = document.getElementById('runningJobsContent');
+    const logsSection = document.getElementById('runningJobLogs');
+
+    const jobNames = Object.keys(runningJobs);
+
+    if (jobNames.length === 0) {
+        container.innerHTML = '<p class="empty-state" id="noRunningJobs">No jobs currently running.</p>';
+        logsSection.style.display = 'none';
+        return;
+    }
+
+    let html = '';
+    jobNames.forEach(name => {
+        const job = runningJobs[name];
+        const statusClass = job.status || 'running';
+        const startTime = job.start_time ? new Date(job.start_time).toLocaleString() : 'N/A';
+        const step = extractStep(job.logs);
+
+        const lockingUser = extractLockingUser(job.logs);
+        const lockWarning = lockingUser ? `<span class="lock-warning" title="File locked by ${escapeHtml(lockingUser)}">&#128274; Locked by ${escapeHtml(lockingUser)}</span>` : '';
+
+        html += `
+            <div class="running-job-item ${statusClass}">
+                <div style="flex: 1;">
+                    <div class="running-job-name">${escapeHtml(name)}</div>
+                    <div class="running-job-progress">${escapeHtml(step)}</div>
+                    ${lockWarning}
+                    <div class="running-job-time">Started: ${startTime}</div>
+                </div>
+                <span class="badge badge-${statusClass === 'completed' ? 'success' : statusClass === 'failed' ? 'danger' : 'warning'}">${statusClass.toUpperCase()}</span>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    // Show combined live log from all running jobs
+    if (jobNames.length > 0) {
+        let combinedLogs = '';
+        jobNames.forEach(name => {
+            const job = runningJobs[name];
+            if (job.logs) {
+                combinedLogs += `=== ${name} ===\n${job.logs}\n`;
+            }
+        });
+        if (combinedLogs) {
+            document.getElementById('jobLogsContent').textContent = combinedLogs;
+            logsSection.style.display = 'block';
+            const logEl = document.getElementById('jobLogsContent');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Start auto-refresh when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    fetchRunningJobs();
+    refreshInterval = setInterval(fetchRunningJobs, 1000); // Refresh every 1 second
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) clearInterval(refreshInterval);
+});
+</script>
+
+<style>
+.lock-warning {
+    display: inline-block;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    margin-top: 4px;
+}
+</style>
+
+{% endblock %}

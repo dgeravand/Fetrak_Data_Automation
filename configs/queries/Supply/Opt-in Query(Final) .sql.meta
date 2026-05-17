@@ -1,0 +1,4 @@
+{
+  "description": "طرح های opt-in ویو براساس تایپ طرح ها",
+  "connection_type": "clickhouse"
+}

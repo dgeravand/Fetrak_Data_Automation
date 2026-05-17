@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Queries - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>Query Files</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p class="intro">Query files used by your jobs. These are stored in the queries folder or defined inline in job configs.</p>
+
+{% if jobs_with_queries %}
+<div class="queries-list">
+    {% for item in jobs_with_queries %}
+    <div class="query-card">
+        <h3>{{ item.job }}</h3>
+        <p><strong>Query file:</strong> {{ item.query_file }}</p>
+        <a href="{{ url_for('main.query_edit', name=item.job) }}" class="btn btn-sm">Edit Query</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty-state">No query files found. Jobs use inline queries or query files from configs.</p>
+{% endif %}
+
+<style>
+.queries-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.query-card {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.query-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.query-card p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .queries-list {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

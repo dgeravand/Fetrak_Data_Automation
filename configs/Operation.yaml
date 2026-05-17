@@ -1,0 +1,46 @@
+jobs:
+- name: sample1
+  active: false
+  schedule: 0 8 * * *
+  source:
+    type: sqlserver
+  output:
+    sharepoint:
+      library: ''
+      folder: ''
+    file:
+      name: ''
+      write_mode: append
+      sheet:
+        name: data
+  owners: []
+- name: sample2
+  active: false
+  schedule: 0 8 * * *
+  source:
+    type: sqlserver
+  output:
+    sharepoint:
+      library: ''
+      folder: ''
+    file:
+      name: ''
+      write_mode: append
+      sheet:
+        name: data
+  owners: []
+- name: S3
+  active: false
+  schedule: 0 8 * * *
+  source:
+    type: sqlserver
+  output:
+    sharepoint:
+      library: ''
+      folder: ''
+    file:
+      name: ''
+      write_mode: append
+      sheet:
+        name: data
+  owners: []

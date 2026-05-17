@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>{{ title }}</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% set job_data = job or {
+    'name': '',
+    'active': True,
+    'schedule': '0 8 * * *',
+    'source': {'type': 'sqlserver', 'query': '', 'query_file': ''},
+    'output': {'type': 'sharepoint', 'sharepoint': {'library': '', 'folder': ''}, 'file': {'name': '', 'write_mode': 'append', 'sheet': {'name': 'data'}}},
+    'owners': []
+} %}
+
+{% set source = job_data.source or {} %}
+{% set output = job_data.output or {} %}
+{% set output_type = output.type or 'sharepoint' %}
+{% set sp = output.sharepoint or {} %}
+{% set file = output.file or {} %}
+{% set sheet = file.sheet or {} %}
+{% set owners_list = job_data.owners or [] %}
+
+<form method="POST" class="job-form">
+    <div class="form-section">
+        <h2>Job Configuration</h2>
+
+        <div class="form-group">
+            <label for="name">Job Name *</label>
+            <input type="text" id="name" name="name" value="{{ job_data.name or '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="active" name="active" {% if job_data.active %}checked{% endif %}>
+                Active (job runs on schedule)
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label for="schedule">Schedule (Cron Expression)</label>
+            <input type="text" id="schedule" name="schedule" value="{{ job_data.schedule or '0 8 * * *' }}">
+            <small>Leave empty for manual only. Format: minute hour day-of-month month day-of-month</small>
+        </div>
+    </div>
+
+    <!-- PERMISSIONS -->
+    <div class="form-section">
+        <h2>Permissions</h2>
+
+        <div class="form-group">
+            <label for="owners">Owners (comma-separated emails)</label>
+            <input type="text" id="owners" name="owners" value="{{ owners_list|join(', ') }}">
+        </div>
+
+        <div class="form-group">
+            <label for="developer">Developer (person responsible for job)</label>
+            <input type="text" id="developer" name="developer" value="{{ job_data.developer or '' }}">
+        </div>
+    </div>
+
+    <!-- SOURCE CONFIGURATION -->
+    <div class="form-section">
+        <h2>Source Configuration</h2>
+
+        <div class="form-group">
+            <label for="source_type">Database Type *</label>
+            <select id="source_type" name="source_type">
+                <option value="sqlserver" {% if source.type == 'sqlserver' %}selected{% endif %}>SQL Server</option>
+                <option value="clickhouse" {% if source.type == 'clickhouse' %}selected{% endif %}>ClickHouse</option>
+            </select>
+        </div>
+
+        {% if query_files %}
+        <div class="form-group">
+            <label for="query_file">Query File (select existing or leave empty for inline)</label>
+            <select id="query_file" name="query_file">
+                <option value="">-- Inline query below --</option>
+                {% for qf in query_files %}
+                {% set full_path = qf.config_name ~ '/' ~ qf.name %}
+                <option value="{{ full_path }}" {% if source.query_file == full_path or source.query_file == qf.name %}selected{% endif %}>{{ qf.name }} ({{ qf.config_name }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="query">SQL Query</label>
+            <textarea id="query" name="query" rows="8">{{ source.query or '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- OUTPUT TYPE -->
+    <div class="form-section">
+        <h2>Output Type</h2>
+
+        <div class="form-group">
+            <label for="output_type">Select Output Type *</label>
+            <select id="output_type" name="output_type" onchange="toggleOutputFields()">
+                <option value="sharepoint" {% if output_type == 'sharepoint' %}selected{% endif %}>SharePoint</option>
+                <option value="file" {% if output_type == 'file' %}selected{% endif %}>Local File</option>
+                <option value="email" {% if output_type == 'email' %}selected{% endif %}>Email</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- SHAREPOINT CONFIG - SHOWS WHEN SHAREPOINT SELECTED -->
+    <div id="sharepoint-fields" class="form-section" {% if output_type != 'sharepoint' %}style="display:none"{% endif %}>
+        <h2>SharePoint Configuration</h2>
+
+        <div class="form-group">
+            <label for="sp_library">SharePoint Library *</label>
+            <input type="text" id="sp_library" name="sp_library" value="{{ sp.library or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="sp_folder">SharePoint Folder *</label>
+            <input type="text" id="sp_folder" name="sp_folder" value="{{ sp.folder or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="file_name">File Name *</label>
+            <input type="text" id="file_name" name="file_name" value="{{ file.name or '' }}">
+            <small>Use {YYYY}, {YYYY_MM}, {YYYY_MM_DD}, {job_name} for dynamic names</small>
+        </div>
+
+        <div class="form-group">
+            <label for="write_mode">Write Mode</label>
+            <select id="write_mode" name="write_mode">
+                <option value="append" {% if file.write_mode == 'append' %}selected{% endif %}>Append</option>
+                <option value="replace" {% if file.write_mode == 'replace' %}selected{% endif %}>Replace</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="sheet_name">Sheet Name</label>
+            <input type="text" id="sheet_name" name="sheet_name" value="{{ sheet.name or 'data' }}">
+        </div>
+    </div>
+
+    <!-- FILE CONFIG - SHOWS WHEN FILE SELECTED -->
+    <div id="file-fields" class="form-section" {% if output_type != 'file' %}style="display:none"{% endif %}>
+        <h2>Local File Configuration</h2>
+
+        <div class="form-group">
+            <label for="file_path">File Path *</label>
+            <input type="text" id="file_path" name="file_path" value="{{ output.file_path or '' }}" placeholder="C:\Data\output.xlsx">
+        </div>
+
+        <div class="form-group">
+            <label for="sheet_name">Sheet Name</label>
+            <input type="text" id="sheet_name" name="sheet_name" value="{{ sheet.name or 'data' }}">
+        </div>
+    </div>
+
+    <!-- EMAIL CONFIG - SHOWS WHEN EMAIL SELECTED -->
+    <div id="email-fields" class="form-section" {% if output_type != 'email' %}style="display:none"{% endif %}>
+        <h2>Email Configuration</h2>
+
+        <div class="form-group">
+            <label for="email_to">To (comma-separated emails) *</label>
+            <input type="text" id="email_to" name="email_to" value="{{ output.email_to or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="email_subject">Subject</label>
+            <input type="text" id="email_subject" name="email_subject" value="{{ output.email_subject or '' }}">
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{{ url_for('main.configs') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Job</button>
+    </div>
+</form>
+
+<script>
+function toggleOutputFields() {
+    var outputType = document.getElementById('output_type').value;
+    document.getElementById('sharepoint-fields').style.display = (outputType === 'sharepoint') ? 'block' : 'none';
+    document.getElementById('file-fields').style.display = (outputType === 'file') ? 'block' : 'none';
+    document.getElementById('email-fields').style.display = (outputType === 'email') ? 'block' : 'none';
+}
+</script>
+{% endblock %}

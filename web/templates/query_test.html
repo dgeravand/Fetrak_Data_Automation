@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>{{ title }}</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p class="intro">Query test results for job: <strong>{{ job_name }}</strong></p>
+
+<div class="test-results">
+    <div class="result-summary">
+        <span class="badge badge-success">{{ row_count }} rows returned</span>
+        <span>Showing up to 5 sample rows</span>
+    </div>
+
+    {% if columns %}
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in sample %}
+            <tr>
+                {% for col in columns %}
+                <td>{{ row[col] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No data returned.</p>
+    {% endif %}
+</div>
+
+<div class="query-preview">
+    <h3>Tested Query:</h3>
+    <pre><code>{{ query }}</code></pre>
+</div>
+
+<div class="form-actions">
+    <a href="{{ url_for('main.query_edit', name=job_name) }}" class="btn btn-secondary">Back to Editor</a>
+    <a href="{{ url_for('main.configs') }}" class="btn">Done</a>
+</div>
+
+<style>
+.result-summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.query-preview {
+    margin-top: 24px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.query-preview h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+}
+
+.query-preview pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 12px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.data-table th, .data-table td {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Config Admin - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <div class="title-with-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="title-icon"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        <h1>Config Admin</h1>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Config File</th>
+                <th>Created Date</th>
+                <th>Jobs</th>
+                <th>Queries</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for config in configs %}
+            <tr>
+                <td><strong>{{ config.name }}</strong></td>
+                <td>{{ config.created_date }}</td>
+                <td>{{ config.job_count }}</td>
+                <td>{{ config.query_count }}</td>
+                <td>
+                    {% if config.active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td class="action-icons">
+                    {% if config.active %}
+                    <form method="POST" action="{{ url_for('main.config_deactivate', config_file=config.file) }}" style="display:inline;">
+                        <button type="submit" class="icon-btn icon-warning" title="Deactivate" onclick="return confirm('Deactivate {{ config.name }}?')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('main.config_activate', config_file=config.file) }}" style="display:inline;">
+                        <button type="submit" class="icon-btn" title="Activate" onclick="return confirm('Activate {{ config.name }}?')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="currentColor"/></svg>
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('main.config_delete_physically', config_file=config.file) }}" style="display:inline;">
+                        <button type="submit" class="icon-btn icon-danger" title="Delete" onclick="return confirm('DELETE {{ config.name }}? This cannot be undone!')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not configs %}
+<p class="text-muted">No config files found.</p>
+{% endif %}
+
+<style>
+.badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.badge-success { background: #28a745; color: white; }
+.badge-secondary { background: #6c757d; color: white; }
+.action-icons { display: flex; gap: 8px; align-items: center; }
+.icon-btn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; transition: all 0.2s; }
+.icon-btn:hover { background: #f0f0f0; }
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-warning { color: #ffc107; }
+.icon-danger { color: #dc3545; }
+.icon-danger:hover { background: #ffcdd5; }
+</style>
+{% endblock %}

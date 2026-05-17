@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>{{ title }}</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if query_file %}
+<p class="intro">File: <code>{{ query_file }}</code></p>
+{% else %}
+<p class="intro">No query file assigned. This will create a new file.</p>
+{% endif %}
+
+<form method="POST" class="job-form">
+    <div class="form-section">
+        <h2>SQL Query</h2>
+
+        <div class="form-group">
+            <label for="query">Query SQL</label>
+            <textarea id="query" name="query" rows="20" class="code-editor">{{ query }}</textarea>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" name="action" value="save" class="btn btn-primary">Save Query</button>
+        <button type="submit" name="action" value="test" class="btn btn-success">Test Query</button>
+        <a href="{{ url_for('main.configs') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<style>
+.code-editor {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 12px;
+    width: 100%;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}

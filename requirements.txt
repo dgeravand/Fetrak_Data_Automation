@@ -1,0 +1,22 @@
+pandas==2.2.2
+openpyxl==3.1.2
+requests==2.31.0
+python-dotenv==1.0.1
+pyodbc==5.1.0
+clickhouse-connect==0.7.2
+PyYAML==6.0.2
+urllib3==2.2.1
+idna==3.6
+lxml==5.2.1
+psutil==5.9.8
+
+# Flask dependencies
+Flask==2.3.0
+Flask-SQLAlchemy==3.0.0
+WTForms==3.0.1
+APScheduler==3.10.4
+pywin32==306
+
+requests_ntlm2
+
+

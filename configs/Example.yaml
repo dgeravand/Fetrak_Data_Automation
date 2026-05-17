@@ -1,0 +1,27 @@
+# Example Configuration — replace with your own jobs
+# This file is a template showing all available options.
+
+jobs:
+  - name: "Daily Sales Report"
+    active: false                     # Set to true to enable scheduling
+    schedule: "0 8 * * *"           # Cron expression (daily at 8:00 AM)
+
+    owners:
+      - "team@company.com"          # SharePoint file owners
+
+    source:
+      type: "clickhouse"            # or "sqlserver"
+      query_file: "Example/DailySales.sql"
+
+    output:
+      sharepoint:
+        library: "Shared Documents"
+        folder: "/Reports"          # SharePoint folder path
+
+      file:
+        name: "Sales_{YYYY_MM_DD}.xlsx"   # Dynamic date placeholders
+        write_mode: "append"         # "append" adds data, "replace" overwrites
+        sheet:
+          name: "Sales"              # Excel sheet name
+
+    developer: "dev@company.com"

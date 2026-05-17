@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Fetrak{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="{{ url_for('main.configs') }}" class="brand">Fetrak</a>
+            <ul class="nav-links">
+                <li class="{% if request.endpoint=='main.configs' %}active{% endif %}">
+                    <a href="{{ url_for('main.configs') }}">Jobs</a>
+                </li>
+                <li class="{% if request.endpoint=='main.queries_list' %}active{% endif %}">
+                    <a href="{{ url_for('main.queries_list') }}">Queries</a>
+                </li>
+                <li class="{% if request.endpoint=='main.schedule' %}active{% endif %}">
+                    <a href="{{ url_for('main.schedule') }}">Schedule</a>
+                </li>
+                <li class="{% if request.endpoint=='main.run_page' %}active{% endif %}">
+                    <a href="{{ url_for('main.run_page') }}">Run</a>
+                </li>
+                <li class="{% if request.endpoint=='main.history' %}active{% endif %}">
+                    <a href="{{ url_for('main.history') }}">History</a>
+                </li>
+                <li class="{% if request.endpoint=='main.scheduler_admin' %}active{% endif %}">
+                    <a href="{{ url_for('main.scheduler_admin') }}">Admin</a>
+                </li>
+                <li class="nav-actions">
+                    <a href="{{ url_for('main.configs_new') }}" class="btn-new">+ New Config</a>
+                    <div class="filter-dropdown">
+                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                        </svg>
+                        <select name="config_filter" class="config-filter-nav" onchange="applyConfigFilter(this.value)">
+                            <option value="">All Configs</option>
+                            {% for config in all_configsdropdown|default([]) %}
+                            <option value="{{ config.file }}" {% if request.args.get('config') == config.file %}selected{% endif %}>{{ config.file.replace('.yaml', '').replace('.yml', '') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <script>
+    // On page load, restore saved config filter
+    document.addEventListener('DOMContentLoaded', function() {
+        var savedConfig = sessionStorage.getItem('selectedConfig');
+        if (savedConfig) {
+            var select = document.querySelector('.config-filter-nav');
+            if (select) select.value = savedConfig;
+        }
+    });
+
+    function applyConfigFilter(value) {
+        sessionStorage.setItem('selectedConfig', value);
+        window.location.href = updateUrlWithConfig(window.location.href, value);
+    }
+
+    function updateUrlWithConfig(url, configValue) {
+        var urlObj = new URL(url);
+        if (configValue) {
+            urlObj.searchParams.set('config', configValue);
+        } else {
+            urlObj.searchParams.delete('config');
+        }
+        return urlObj.toString();
+    }
+
+    // Update nav links to include config filter
+    document.addEventListener('DOMContentLoaded', function() {
+        var savedConfig = sessionStorage.getItem('selectedConfig');
+        if (!savedConfig) return;
+
+        var navLinks = document.querySelectorAll('.nav-links a:not(.brand):not(.btn-new)');
+        navLinks.forEach(function(link) {
+            var href = link.getAttribute('href');
+            if (href && !href.includes('/configs/new') && !href.includes('/configs/admin')) {
+                link.href = updateUrlWithConfig(href, savedConfig);
+            }
+        });
+    });
+    </script>
+
+    <main>
+        {% block page_header %}{% endblock %}
+
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p><strong>Fetrak</strong> - Data Automation</p>
+        </div>
+    </footer>
+
+    <style>
+    /* Filter Dropdown Styling */
+    .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+    }
+    .nav-actions li {
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .filter-dropdown {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 6px;
+        padding: 4px 12px;
+    }
+    .filter-icon {
+        width: 14px;
+        height: 14px;
+        color: rgba(255, 255, 255, 0.7);
+        flex-shrink: 0;
+    }
+    .config-filter-nav {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 0;
+        min-width: 95px;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    .config-filter-nav option {
+        background: #1e293b;
+        color: white;
+        padding: 8px;
+    }
+    .config-filter-nav:focus {
+        outline: none;
+    }
+    /* Active filter indicator */
+    .filter-dropdown.has-filter {
+        background: rgba(99, 179, 237, 0.25);
+        border-color: rgba(99, 179, 237, 0.5);
+    }
+    .filter-dropdown.has-filter .filter-icon {
+        color: #63b3ed;
+    }
+</style>
+
+    <script>
+    // On page load, restore saved config filter and update UI
+    document.addEventListener('DOMContentLoaded', function() {
+        var savedConfig = sessionStorage.getItem('selectedConfig');
+
+        // Restore filter dropdown value
+        var select = document.querySelector('.config-filter-nav');
+        if (select && savedConfig) {
+            select.value = savedConfig;
+            // Add has-filter class to dropdown wrapper
+            var dropdown = select.closest('.filter-dropdown');
+            if (dropdown) dropdown.classList.add('has-filter');
+        }
+
+        // Update nav links and brand to include config filter
+        if (savedConfig) {
+            // Update nav links
+            var navLinks = document.querySelectorAll('.nav-links a:not(.btn-new)');
+            navLinks.forEach(function(link) {
+                var href = link.getAttribute('href');
+                if (href && !href.includes('/configs/new') && !href.includes('/configs/admin')) {
+                    var url = new URL(href, window.location.origin);
+                    url.searchParams.set('config', savedConfig);
+                    link.setAttribute('href', url.toString());
+                }
+            });
+
+            // Update brand link
+            var brandLink = document.querySelector('.brand');
+            if (brandLink) {
+                var href = brandLink.getAttribute('href');
+                if (href && !href.includes('/configs/new')) {
+                    var url = new URL(href, window.location.origin);
+                    url.searchParams.set('config', savedConfig);
+                    brandLink.setAttribute('href', url.toString());
+                }
+            }
+        }
+    });
+
+    function applyConfigFilter(value) {
+        sessionStorage.setItem('selectedConfig', value);
+        var url = new URL(window.location.href);
+        if (value) {
+            url.searchParams.set('config', value);
+        } else {
+            url.searchParams.delete('config');
+        }
+        window.location.href = url.toString();
+    }
+    </script>
+</body>
+</html>

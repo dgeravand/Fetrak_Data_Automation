@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>Job Schedules</h1>
+    <div class="scheduler-controls">
+        {% if scheduler_running %}
+        <div class="badge badge-success">Scheduler Running ({{ scheduled_jobs_count }} jobs)</div>
+        <form method="POST" action="{{ url_for('main.scheduler_stop') }}?config={{ config_filter if config_filter else '' }}" style="display:inline;">
+            <button type="submit" class="btn btn-danger">Stop Scheduler</button>
+        </form>
+        <form method="POST" action="{{ url_for('main.scheduler_reload') }}?config={{ config_filter if config_filter else '' }}" style="display:inline;">
+            <button type="submit" class="btn btn-secondary">Reload Jobs</button>
+        </form>
+        {% else %}
+        <div class="badge badge-inactive">Scheduler Stopped</div>
+        <form method="POST" action="{{ url_for('main.scheduler_start') }}?config={{ config_filter if config_filter else '' }}" style="display:inline;">
+            <button type="submit" class="btn btn-success">Start Scheduler</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p class="intro">Manage cron schedules for your jobs. Jobs with schedules will run automatically when the scheduler is running.</p>
+
+<table class="jobs-table">
+    <thead>
+        <tr>
+            <th>Job Name</th>
+            <th>Schedule (Cron)</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs %}
+        <tr>
+            <td>{{ job.name }}</td>
+            <td>
+                {% if job.schedule %}
+                <code>{{ job.schedule }}</code>
+                {% else %}
+                <span class="text-muted">No schedule</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if job.active %}
+                <span class="badge badge-success">Active</span>
+                {% else %}
+                <span class="badge badge-inactive">Inactive</span>
+                {% endif %}
+            </td>
+            <td class="actions">
+                <a href="{{ url_for('main.schedule_edit', config_file=job.config_file, name=job.name, **({'config': config_filter} if config_filter else {})) }}" class="btn btn-sm">Edit</a>
+                <a href="{{ url_for('main.run_job', config_file=job.config_file, name=job.name, **({'config': config_filter} if config_filter else {})) }}" class="btn btn-sm btn-primary">Run Now</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if not jobs %}
+<p class="empty-state">No scheduled jobs found. Add jobs with cron schedules in your <a href="{{ url_for('main.configs', config=config_filter if config_filter else None) }}">config files</a>.</p>
+{% endif %}
+
+<div class="info-box">
+    <h3>Cron Format Help</h3>
+    <code>* * * * *</code>
+    <p>Minute Hour Day-of-Month Month Day-of-Week</p>
+    <ul>
+        <li><code>0 8 * * *</code> - Daily at 8 AM</li>
+        <li><code>0 8 * * 1-5</code> - Weekdays at 8 AM</li>
+        <li><code>0 0 1 * *</code> - Monthly on 1st</li>
+        <li><code>0 8 * * 0</code> - Weekly on Sunday</li>
+    </ul>
+</div>
+
+<style>
+.scheduler-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.scheduler-controls .badge {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.scheduler-controls .btn {
+    padding: 6px 14px;
+    font-size: 13px;
+}
+.badge-success {
+    background: #28a745;
+    color: white;
+}
+.badge-inactive {
+    background: #6c757d;
+    color: white;
+}
+.info-box {
+    margin-top: 24px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+.info-box h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+}
+.info-box code {
+    background: #e9ecef;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+.info-box ul {
+    margin: 12px 0 0 0;
+    padding-left: 20px;
+}
+.info-box li {
+    margin: 4px 0;
+    font-size: 13px;
+}
+</style>
+{% endblock %}

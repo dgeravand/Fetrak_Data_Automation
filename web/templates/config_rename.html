@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Rename Config - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>Rename Config</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="job-form">
+    <div class="form-section">
+        <p>Current name: <strong>{{ config_file.replace('.yaml', '').replace('.yml', '') }}</strong></p>
+
+        <div class="form-group">
+            <label for="new_name">New Name</label>
+            <input type="text" id="new_name" name="new_name" value="{{ config_file.replace('.yaml', '').replace('.yml', '') }}" required>
+            <small>Enter the new name for this config (without extension)</small>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{{ url_for('main.scheduler_admin') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Rename Config</button>
+    </div>
+</form>
+{% endblock %}

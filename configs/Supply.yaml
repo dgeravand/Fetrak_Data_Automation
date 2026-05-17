@@ -1,0 +1,73 @@
+jobs:
+- name: Normal Query(Commission)
+  active: false
+  schedule: "30 16 * * *"
+  owners:
+  - team@example.com
+  source:
+    type: clickhouse
+    query_file: Supply/Normal Query(Commission).sql
+  output:
+    sharepoint:
+      library: automation
+      folder: /Reports
+    file:
+      name: Supply_{YYYY_MM}.xlsx
+      write_mode: append
+      sheet:
+        name: Normal_Query_Commission
+  developer: developer@example.com
+- name: Normal Query(Target)
+  active: false
+  schedule: "21 22 * * *"
+  owners:
+  - team@example.com
+  source:
+    type: clickhouse
+    query_file: Supply/Normal Query(Target).sql
+  output:
+    sharepoint:
+      library: automation
+      folder: /Reports
+    file:
+      name: Supply_{YYYY_MM}.xlsx
+      write_mode: append
+      sheet:
+        name: Normal_Query_Target
+  developer: developer@example.com
+- name: Opt-in By Group
+  active: false
+  schedule: "13 0 * * *"
+  owners:
+  - team@example.com
+  source:
+    type: clickhouse
+    query_file: Supply/Opt-in By Group.sql
+  output:
+    sharepoint:
+      library: automation
+      folder: /Reports
+    file:
+      name: Supply_{YYYY_MM}.xlsx
+      write_mode: append
+      sheet:
+        name: Opt-in_By_Group
+  developer: developer@example.com
+- name: Opt-in Query(Final)
+  active: false
+  schedule: "27 15 * * *"
+  owners:
+  - team@example.com
+  source:
+    type: clickhouse
+    query_file: Supply/Opt-in Query(Final).sql
+  output:
+    sharepoint:
+      library: automation
+      folder: /Reports
+    file:
+      name: Supply_{YYYY_MM}.xlsx
+      write_mode: append
+      sheet:
+        name: Opt-in_Query_Final
+  developer: developer@example.com

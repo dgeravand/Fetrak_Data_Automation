@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>{{ title }}</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="job-form">
+    <div class="form-section">
+        <h2>Schedule Configuration</h2>
+
+        <div class="form-group">
+            <label for="schedule">Cron Expression</label>
+            <input type="text" id="schedule" name="schedule" value="{{ schedule or '' }}" placeholder="0 8 * * *">
+            <small>Leave empty for manual execution only.</small>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Cron Format Reference</h3>
+        <code>* * * * *</code>
+        <p>Minute Hour Day-of-Month Month Day-of-Week</p>
+
+        <div class="form-group">
+            <label>Common Examples:</label>
+            <ul>
+                <li><code>0 8 * * *</code> - Daily at 8 AM</li>
+                <li><code>0 8 * * 1-5</code> - Weekdays at 8 AM</li>
+                <li><code>0 0 1 * *</code> - Monthly on 1st</li>
+                <li><code>0 8 * * 0</code> - Weekly on Sunday</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Schedule</button>
+        <a href="{{ url_for('main.schedule') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

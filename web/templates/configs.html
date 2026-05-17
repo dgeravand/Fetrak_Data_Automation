@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Configs - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <div class="title-with-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="title-icon"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        <h1>Job Configuration</h1>
+    </div>
+    <form method="GET" action="{{ url_for('main.configs') }}" class="search-box">
+        {% if config_filter %}
+        <input type="hidden" name="config" value="{{ config_filter }}">
+        {% endif %}
+        <input type="text" placeholder="Search..." name="search" class="search-input" value="{{ request.args.get('search', '') }}">
+    </form>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% for config in configs %}
+<div class="config-section">
+    <div class="config-header">
+        <h2>{{ config.file.replace('.yaml', '').replace('.yml', '') }}</h2>
+        <span class="config-meta">{{ config.jobs|length }} jobs</span>
+        <a href="{{ url_for('main.job_new', config_file=config.file) }}" class="btn btn-success">+ Add Job</a>
+    </div>
+
+    {% if config.jobs %}
+    <div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width:50px"></th>
+                <th style="width:20%">Job Name</th>
+                <th style="width:15%">Developer</th>
+                <th style="width:15%">Schedule</th>
+                <th style="width:15%">Last Run</th>
+                <th style="width:10%">Source</th>
+                <th style="width:25%">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in config.jobs %}
+            <tr>
+                <td class="status-cell" title="{% if job.active %}Active{% else %}Inactive{% endif %}">
+                    <svg class="status-icon" viewBox="0 0 24 24">
+                        {% if job.active %}
+                        <circle cx="12" cy="12" r="10" fill="#28a745"/>
+                        <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2" fill="none"/>
+                        {% else %}
+                        <circle cx="12" cy="12" r="10" fill="#6c757d"/>
+                        <path d="M9 9l6 6M15 9l-6 6" stroke="white" stroke-width="2"/>
+                        {% endif %}
+                    </svg>
+                </td>
+                <td><strong>{{ job.name }}</strong></td>
+                <td>{{ job.developer or '-' }}</td>
+                <td><code>{{ job.schedule or '-' }}</code></td>
+                <td>
+                    {% if job.last_run %}
+                    <span class="last-run-badge {{ job.last_run.status }}" title="Status: {{ job.last_run.status }}">
+                        {% if job.last_run.status == 'success' %}
+                        <svg class="last-run-icon success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                        {% elif job.last_run.status == 'failed' %}
+                        <svg class="last-run-icon failed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        {% else %}
+                        <svg class="last-run-icon pending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 6v6l4 2"/></svg>
+                        {% endif %}
+                        <span class="last-run-time">{{ job.last_run.end_time|tzformat if job.last_run.end_time else job.last_run.status }}</span>
+                    </span>
+                    {% else %}
+                    <span class="last-run-none">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ job.source.type }}</td>
+                <td class="action-icons">
+                    <a href="{{ url_for('main.history') }}?job={{ job.name }}" class="icon-btn" title="Job History">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </a>
+                    <a href="{{ url_for('main.run_job', config_file=config.file, name=job.name) }}" class="icon-btn" title="Run">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </a>
+                    <a href="{{ url_for('main.job_edit', config_file=config.file, name=job.name) }}" class="icon-btn" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                    </a>
+                    <form action="{{ url_for('main.job_copy', config_file=config.file, name=job.name) }}" method="POST" style="display:inline" onsubmit="var name=prompt('Enter new job name:'); if(!name) return false; this.new_name.value=name; return true;">
+                        <input type="hidden" name="new_name" value="">
+                        <button type="submit" class="icon-btn" title="Copy" style="padding:0">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                    </form>
+                    <a href="{{ url_for('main.schedule_edit', config_file=config.file, name=job.name) }}" class="icon-btn" title="Schedule">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </a>
+                    {% if job.source.query_file %}
+                    <a href="{{ url_for('main.query_edit', name=job.name) }}" class="icon-btn" title="Query">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('main.job_toggle', config_file=config.file, name=job.name) }}" class="icon-btn {% if job.active %}icon-warning{% endif %}" title="{% if job.active %}Disable{% else %}Enable{% endif %}">
+                        {% if job.active %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                        {% else %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4V8z" fill="currentColor"/></svg>
+                        {% endif %}
+                    </a>
+                    <a href="{{ url_for('main.job_delete', config_file=config.file, name=job.name) }}" class="icon-btn icon-danger" title="Delete" onclick="return confirm('Delete {{ job.name }}?')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<style>
+.config-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 8px 12px; background: #e9ecef; border-radius: 6px; }
+.config-header h2 { margin: 0; font-size: 14px; color: #333; font-weight: 600; }
+.config-header .config-meta { color: #666; font-size: 12px; }
+.config-header .btn { margin-left: 16px; }
+.config-section { margin-bottom: 24px; }
+.status-cell, .action-icons { text-align: center; }
+.status-icon { width: 22px; height: 22px; }
+.action-icons { display: flex; flex-direction: row; gap: 4px; align-items: center; justify-content: center; }
+.icon-btn, .icon-btn button { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: none; background: #f0f0f0; border-radius: 4px; cursor: pointer; transition: all 0.2s; color: inherit; }
+.icon-btn:hover { background: #e0e0e0; transform: scale(1.1); }
+.icon-btn svg { width: 14px; height: 14px; }
+.icon-btn:hover::after { content: attr(title); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 100; margin-bottom: 2px; }
+.icon-warning { background: #fff3cd; }
+.icon-danger:hover { background: #ffcdd5; }
+.last-run-badge { display: inline-flex; align-items: center; gap: 6px; }
+.last-run-icon { width: 16px; height: 16px; }
+.last-run-icon.success { stroke: #28a745; }
+.last-run-icon.failed { stroke: #dc3545; }
+.last-run-icon.pending { stroke: #ffc107; }
+.last-run-time { font-size: 12px; color: #555; }
+.last-run-none { color: #999; font-size: 12px; }
+.table-responsive { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 8px 12px; border: 1px solid #ddd; }
+.data-table th { background: #f5f5f5; font-weight: 600; }
+</style>
+{% endblock %}

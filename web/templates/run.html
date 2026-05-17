@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Run Jobs - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>Run Jobs</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p class="intro">Run jobs on-demand. Click a job to execute it immediately.</p>
+
+{% if jobs %}
+<div class="jobs-grid">
+    {% for job in jobs %}
+    <div class="job-card">
+        <h3>{{ job.name }}</h3>
+        <p class="job-info">
+            <strong>Config:</strong> {{ job.config_file }}<br>
+            <strong>Schedule:</strong> <code>{{ job.schedule or 'Manual only' }}</code>
+        </p>
+        <a href="{{ url_for('main.run_job', config_file=job.config_file, name=job.name, **({'config': config_filter} if config_filter else {})) }}" class="btn btn-primary">Run Now</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty-state">No active jobs to run. <a href="{{ url_for('main.configs', config=config_filter if config_filter else None) }}">View configs</a></p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>Jobs</h1>
+    <a href="{{ url_for('main.configs') }}" class="btn btn-primary">View All Configs</a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if jobs %}
+<table class="jobs-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Schedule</th>
+            <th>Source</th>
+            <th>Config File</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs %}
+        <tr>
+            <td>
+                <a href="{{ url_for('main.job_edit', config_file=job.config_file, name=job.name) }}">{{ job.name }}</a>
+            </td>
+            <td>
+                {% if job.active %}
+                <span class="badge badge-success">Active</span>
+                {% else %}
+                <span class="badge badge-inactive">Inactive</span>
+                {% endif %}
+            </td>
+            <td><code>{{ job.schedule or '-' }}</code></td>
+            <td>{{ job.source_type }}</td>
+            <td>{{ job.config_file }}</td>
+            <td class="actions">
+                <form action="{{ url_for('main.job_toggle', config_file=job.config_file, name=job.name) }}" method="post">
+                    <button type="submit" class="btn btn-sm">
+                        {% if job.active %}Disable{% else %}Enable{% endif %}
+                    </button>
+                </form>
+                <a href="{{ url_for('main.job_edit', config_file=job.config_file, name=job.name) }}" class="btn btn-sm">Edit</a>
+                <form action="{{ url_for('main.job_delete', config_file=job.config_file, name=job.name) }}" method="post" class="inline">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete job {{ job.name }}?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">No jobs found. <a href="{{ url_for('main.configs') }}">View configs to add a job</a></p>
+{% endif %}
+{% endblock %}

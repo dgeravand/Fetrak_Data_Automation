@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}History - Fetrak{% endblock %}
+
+{% block page_header %}
+<div class="page-header">
+    <h1>Run History</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if runs %}
+<div class="history-table">
+    <div class="history-header">
+        <span class="col-status">Status</span>
+        <span class="col-trigger">Trigger</span>
+        <span class="col-job">Job</span>
+        <span class="col-time">Time</span>
+        <span class="col-duration">Duration</span>
+        <span class="col-rows">Rows</span>
+        <span class="col-actions">Actions</span>
+    </div>
+    {% for run in runs %}
+    {% set loop_idx = loop.index %}
+    <div class="history-row run-{{ run.status }}" data-log-id="{{ loop_idx }}">
+        <span class="col-status">
+            {% if run.status == 'running' %}
+            <span class="badge badge-warning">Running</span>
+            {% elif run.status == 'success' %}
+            <span class="badge badge-success">Completed</span>
+            {% elif run.status == 'failed' %}
+            <span class="badge badge-danger">Failed</span>
+            {% else %}
+            <span class="badge">{{ run.status }}</span>
+            {% endif %}
+        </span>
+        <span class="col-trigger">
+            {% if run.trigger_type == 'scheduled' %}
+            <span class="trigger-badge trigger-scheduled" title="Scheduled">S</span>
+            {% else %}
+            <span class="trigger-badge trigger-manual" title="Manual">M</span>
+            {% endif %}
+        </span>
+        <span class="col-job" title="{{ run.job_name }}">{{ run.job_name }}</span>
+        <span class="col-time">{{ run.start_time|tzformat('%Y-%m-%d %H:%M:%S') if run.start_time else '-' }}</span>
+        <span class="col-duration">
+            {% if run.duration %}
+            {{ "%.1f"|format(run.duration) }}s
+            {% elif run.status == 'running' %}
+            <span class="running-indicator">...</span>
+            {% else %}
+            -
+            {% endif %}
+        </span>
+        <span class="col-rows">{{ run.rows_processed or '-' }}</span>
+        <span class="col-actions">
+            <button class="icon-btn log-btn{% if run.error_message %} has-error{% endif %}" title="Terminal Logs" data-log-id="{{ loop_idx }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </button>
+        </span>
+    </div>
+    <pre id="log-{{ loop_idx }}" class="log-panel{% if run.status == 'running' %} live-log{% endif %}{% if run.error_message %} error-panel{% endif %}" data-job="{{ run.job_name }}" data-log-id="{{ loop_idx }}">{% if run.error_message %}ERROR:
+{{ run.error_message }}
+---
+{% endif %}{{ run.logs or '' }}</pre>
+    {% endfor %}
+</div>
+
+{% if pages > 1 %}
+<nav class="pagination">
+    {% if has_prev %}
+    <a href="{{ url_for('main.history', page=page-1, job=job_filter, config=config_filter) }}" class="btn">Previous</a>
+    {% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if has_next %}
+    <a href="{{ url_for('main.history', page=page+1, job=job_filter, config=config_filter) }}" class="btn">Next</a>
+    {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<p class="empty-state">No run history yet. <a href="{{ url_for('main.run_page', config=config_filter if config_filter else None) }}">Run a job</a> to see results here.</p>
+{% endif %}
+
+<style>
+.history-table {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: #f5f5f5;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.history-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: white;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+.history-row:hover {
+    background: #f8f9fa;
+}
+
+.history-row.run-success {
+    border-left: 3px solid #28a745;
+}
+.history-row.run-failed {
+    border-left: 3px solid #dc3545;
+}
+.history-row.run-running {
+    border-left: 3px solid #ffc107;
+}
+
+.col-status { min-width: 90px; width: 90px; }
+.col-trigger { min-width: 50px; width: 50px; text-align: center; }
+.col-job { flex: 1; min-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.col-time { min-width: 150px; width: 150px; color: #666; font-family: monospace; font-size: 12px; }
+.col-duration { min-width: 70px; width: 70px; text-align: right; color: #666; }
+.col-rows { min-width: 60px; width: 60px; text-align: right; color: #28a745; font-weight: 500; }
+.col-actions { min-width: 80px; width: 80px; display: flex; gap: 4px; justify-content: flex-end; }
+
+.trigger-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+}
+.trigger-scheduled { background: #6f42c1; }
+.trigger-manual { background: #17a2b8; }
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    transition: background 0.2s;
+    padding: 0;
+}
+.icon-btn:hover { background: #e9ecef; }
+.error-btn { color: #dc3545; }
+.error-btn:hover { background: #f8d7da; }
+.log-btn { color: #495057; }
+.log-btn:hover { background: #e2e6ea; }
+.log-btn.has-error { color: #dc3545; }
+.log-btn.has-error:hover { background: #f8d7da; }
+
+.log-panel {
+    display: none;
+    margin: 0 16px 8px 16px;
+    padding: 10px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.log-panel.show { display: block; }
+
+.error-panel {
+    background: #2a0a0a;
+    color: #ff6b6b;
+    border: 1px solid #dc3545;
+}
+
+.running-indicator {
+    color: #ffc107;
+    font-weight: bold;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@media (max-width: 768px) {
+    .history-header { display: none; }
+    .history-row {
+        flex-wrap: wrap;
+        gap: 4px 12px;
+    }
+    .col-time, .col-duration { font-size: 11px; }
+}
+</style>
+
+<script>
+let pollInterval;
+let liveLogJobNames = [];  // Job names that are still running (need live log polling)
+
+// Check if there are any running jobs on page load and collect their job names for polling
+function checkForRunningJobs() {
+    const runningRows = document.querySelectorAll('.run-running');
+    if (runningRows.length === 0) return false;
+
+    runningRows.forEach(row => {
+        const logPanel = row.nextElementSibling;
+        if (logPanel && logPanel.classList.contains('log-panel') && logPanel.classList.contains('live-log')) {
+            // Don't auto-show - user prefers logs closed by default
+            const jobName = logPanel.getAttribute('data-job');
+            if (jobName && !liveLogJobNames.includes(jobName)) {
+                liveLogJobNames.push(jobName);
+            }
+        }
+    });
+    return liveLogJobNames.length > 0;
+}
+
+// Toggle a specific log panel by its data-log-id
+function toggleLogPanel(logId) {
+    const panel = document.querySelector('.log-panel[data-log-id="' + logId + '"]');
+    if (panel) {
+        panel.classList.toggle('show');
+    }
+}
+
+// Event delegation for log buttons - handles clicks on any row's log button
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.log-btn');
+    if (!btn) return;
+    const logId = btn.getAttribute('data-log-id');
+    if (logId) toggleLogPanel(logId);
+});
+
+function fetchLiveLogs() {
+    if (liveLogJobNames.length === 0) return;
+
+    fetch('/api/scheduler/running-jobs')
+        .then(response => response.json())
+        .then(data => {
+            const runningJobs = data.running || {};
+            const completedJobs = [];
+
+            // Find all live-log panels and update matching running jobs
+            document.querySelectorAll('.live-log[data-job]').forEach(panel => {
+                const jobName = panel.getAttribute('data-job');
+                const jobData = runningJobs[jobName];
+                if (!jobData) return;
+
+                const status = jobData.status;
+                panel.textContent = jobData.logs || '';
+                panel.scrollTop = panel.scrollHeight;
+                if (jobData.status === 'failed') {
+                    panel.classList.add('error-panel');
+                }
+
+                if (status === 'completed' || status === 'failed') {
+                    completedJobs.push(jobName);
+                }
+            });
+
+            completedJobs.forEach(name => {
+                const idx = liveLogJobNames.indexOf(name);
+                if (idx > -1) liveLogJobNames.splice(idx, 1);
+            });
+
+            if (liveLogJobNames.length === 0 && completedJobs.length > 0) {
+                clearInterval(pollInterval);
+                setTimeout(() => { location.reload(); }, 2000);
+            }
+        })
+        .catch(err => {
+            console.error('Failed to fetch live logs:', err);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (checkForRunningJobs()) {
+        pollInterval = setInterval(fetchLiveLogs, 1000);
+    }
+});
+
+window.addEventListener('beforeunload', function() {
+    if (pollInterval) clearInterval(pollInterval);
+});
+</script>
+{% endblock %}
