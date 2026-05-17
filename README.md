@@ -283,3 +283,14 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, then open a Pull Request.
+
+
+## Screenshots
+
+![jobs](docs/images/1.JPG)
+
+![Queries](docs/images/2.JPG)
+
+![Schedule](docs/images/3.JPG)
+
+![History](docs/images/4.JPG)
